@@ -4,6 +4,7 @@ import { FileUploader } from "../components/FileUploader";
 import { JobDescription } from "../components/JobDescription";
 import { AnalysisResults } from "../components/AnalysisResults";
 import { toast } from "sonner";
+import { extractTextFromPdf } from "../utils/pdfProcessor";
 
 const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -37,27 +38,53 @@ const Index = () => {
 
     console.log("⏳ Comenzando proceso de análisis...");
     setAnalyzing(true);
-    
-    // Simulación de análisis
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    // Aquí iría la lógica real de análisis
-    const mockResults = files.map((file) => ({
-      fileName: file.name,
-      score: Math.random() * 100,
-      matches: [
-        "Experiencia relevante",
-        "Habilidades técnicas",
-        "Formación académica",
-      ],
-    }));
 
-    console.log("✅ Análisis completado");
-    console.log("📊 Resultados:", mockResults);
+    try {
+      const results = await Promise.all(
+        files.map(async (file) => {
+          // Intentar extraer texto del PDF
+          const extractedText = await extractTextFromPdf(file);
+          
+          if (extractedText) {
+            console.log(`✅ Texto extraído con éxito de ${file.name}`);
+            // Por ahora, simulamos el score basado en la longitud del texto
+            return {
+              fileName: file.name,
+              score: Math.min((extractedText.length / 1000) * 10, 100), // Simulación de score
+              matches: [
+                "Texto extraído correctamente",
+                `${Math.round(extractedText.length / 100)} párrafos encontrados`,
+                "Análisis preliminar completado",
+              ],
+              text: extractedText.substring(0, 200) + "..." // Primeros 200 caracteres
+            };
+          } else {
+            console.log(`⚠️ No se pudo extraer texto de ${file.name}, se necesita OCR`);
+            // Aquí iría la lógica de Google Vision API como fallback
+            // Por ahora retornamos un resultado simulado
+            return {
+              fileName: file.name,
+              score: 50, // Score intermedio por defecto
+              matches: [
+                "Requiere OCR",
+                "Pendiente de procesamiento visual",
+                "Análisis parcial",
+              ],
+            };
+          }
+        })
+      );
 
-    setResults(mockResults.sort((a, b) => b.score - a.score));
-    setAnalyzing(false);
-    toast.success("Análisis completado");
+      console.log("✅ Análisis completado");
+      console.log("📊 Resultados:", results);
+
+      setResults(results.sort((a, b) => b.score - a.score));
+    } catch (error) {
+      console.error("❌ Error durante el análisis:", error);
+      toast.error("Error al analizar los CVs");
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   return (
