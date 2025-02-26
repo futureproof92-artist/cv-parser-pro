@@ -2,8 +2,9 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { processFileWithVision } from './api';
 
-// Inicializar PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Inicializar PDF.js worker usando un CDN más confiable
+const pdfWorkerSrc = `//cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 export async function extractTextFromPdf(file: File): Promise<string> {
   try {
@@ -13,7 +14,8 @@ export async function extractTextFromPdf(file: File): Promise<string> {
     const arrayBuffer = await file.arrayBuffer();
     
     // Cargar el documento PDF
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
     console.log(`📚 PDF cargado: ${pdf.numPages} páginas`);
     
     let fullText = '';
@@ -42,6 +44,17 @@ export async function extractTextFromPdf(file: File): Promise<string> {
     return fullText;
   } catch (error) {
     console.error("❌ Error al procesar el PDF:", error);
+    // Intentar con Vision API como fallback en caso de error
+    try {
+      console.log("🔄 Intentando procesar con Vision API después del error...");
+      const text = await processFileWithVision(file);
+      if (text) {
+        console.log("✅ Texto extraído exitosamente con Vision API");
+        return text;
+      }
+    } catch (visionError) {
+      console.error("❌ Error también con Vision API:", visionError);
+    }
     return '';
   }
 }
