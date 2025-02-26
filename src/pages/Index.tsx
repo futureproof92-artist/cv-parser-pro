@@ -5,12 +5,16 @@ import { JobDescription } from "../components/JobDescription";
 import { AnalysisResults } from "../components/AnalysisResults";
 import { toast } from "sonner";
 import { extractTextFromPdf } from "../utils/pdfProcessor";
+import { analyzeTextSimilarity } from "../utils/textAnalysis";
 
 const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [jobDescription, setJobDescription] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<any[]>([]);
+
+  // Caché para almacenar resultados de procesamiento
+  const processedCache = new Map<string, string>();
 
   const handleFilesChange = (newFiles: File[]) => {
     if (newFiles.length > 12) {
@@ -22,63 +26,49 @@ const Index = () => {
 
   const handleAnalyze = async () => {
     console.log("🚀 Iniciando análisis de CVs...");
-    console.log("📄 Archivos a analizar:", files.map(f => f.name));
-    console.log("📝 Descripción del puesto:", jobDescription);
-
+    
     if (files.length === 0) {
-      console.log("❌ Error: No hay archivos para analizar");
       toast.error("Por favor, sube al menos un CV");
       return;
     }
     if (!jobDescription.trim()) {
-      console.log("❌ Error: No hay descripción del puesto");
       toast.error("Por favor, describe el puesto de trabajo");
       return;
     }
 
-    console.log("⏳ Comenzando proceso de análisis...");
     setAnalyzing(true);
 
     try {
       const results = await Promise.all(
         files.map(async (file) => {
-          // Intentar extraer texto del PDF
-          const extractedText = await extractTextFromPdf(file);
-          
-          if (extractedText) {
-            console.log(`✅ Texto extraído con éxito de ${file.name}`);
-            // Por ahora, simulamos el score basado en la longitud del texto
-            return {
-              fileName: file.name,
-              score: Math.min((extractedText.length / 1000) * 10, 100), // Simulación de score
-              matches: [
-                "Texto extraído correctamente",
-                `${Math.round(extractedText.length / 100)} párrafos encontrados`,
-                "Análisis preliminar completado",
-              ],
-              text: extractedText.substring(0, 200) + "..." // Primeros 200 caracteres
-            };
+          const cacheKey = `${file.name}-${file.size}-${file.lastModified}`;
+          let extractedText;
+
+          // Verificar caché
+          if (processedCache.has(cacheKey)) {
+            console.log(`📋 Usando texto en caché para ${file.name}`);
+            extractedText = processedCache.get(cacheKey);
           } else {
-            console.log(`⚠️ No se pudo extraer texto de ${file.name}, se necesita OCR`);
-            // Aquí iría la lógica de Google Vision API como fallback
-            // Por ahora retornamos un resultado simulado
-            return {
-              fileName: file.name,
-              score: 50, // Score intermedio por defecto
-              matches: [
-                "Requiere OCR",
-                "Pendiente de procesamiento visual",
-                "Análisis parcial",
-              ],
-            };
+            // Procesar nuevo archivo
+            extractedText = await extractTextFromPdf(file);
+            processedCache.set(cacheKey, extractedText);
           }
+
+          // Analizar similitud
+          const analysis = analyzeTextSimilarity(extractedText, jobDescription);
+
+          return {
+            fileName: file.name,
+            score: analysis.score,
+            matches: analysis.matches,
+            text: extractedText.substring(0, 200) + "..."
+          };
         })
       );
 
       console.log("✅ Análisis completado");
-      console.log("📊 Resultados:", results);
-
       setResults(results.sort((a, b) => b.score - a.score));
+      toast.success(`${results.length} CVs analizados con éxito`);
     } catch (error) {
       console.error("❌ Error durante el análisis:", error);
       toast.error("Error al analizar los CVs");
