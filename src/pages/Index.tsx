@@ -20,16 +20,24 @@ const Index = () => {
   };
 
   const handleAnalyze = async () => {
+    console.log("🚀 Iniciando análisis de CVs...");
+    console.log("📄 Archivos a analizar:", files.map(f => f.name));
+    console.log("📝 Descripción del puesto:", jobDescription);
+
     if (files.length === 0) {
+      console.log("❌ Error: No hay archivos para analizar");
       toast.error("Por favor, sube al menos un CV");
       return;
     }
     if (!jobDescription.trim()) {
+      console.log("❌ Error: No hay descripción del puesto");
       toast.error("Por favor, describe el puesto de trabajo");
       return;
     }
 
+    console.log("⏳ Comenzando proceso de análisis...");
     setAnalyzing(true);
+    
     // Simulación de análisis
     await new Promise((resolve) => setTimeout(resolve, 2000));
     
@@ -43,6 +51,9 @@ const Index = () => {
         "Formación académica",
       ],
     }));
+
+    console.log("✅ Análisis completado");
+    console.log("📊 Resultados:", mockResults);
 
     setResults(mockResults.sort((a, b) => b.score - a.score));
     setAnalyzing(false);
