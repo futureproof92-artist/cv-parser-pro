@@ -2,9 +2,11 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { processFileWithVision } from './api';
 
-// Inicializar PDF.js worker usando la versión correcta
-const pdfWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.js`;
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+// Inicializar PDF.js worker de manera más robusta
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
+).href;
 
 export async function extractTextFromPdf(file: File): Promise<string> {
   try {
@@ -31,30 +33,19 @@ export async function extractTextFromPdf(file: File): Promise<string> {
     // Verificar si se extrajo texto
     if (fullText.trim().length === 0) {
       console.log("⚠️ No se pudo extraer texto del PDF, intentando con OCR");
-      // Usar Google Vision API a través del endpoint seguro
-      fullText = await processFileWithVision(file);
-    }
-    
-    if (!fullText) {
-      console.log("❌ No se pudo extraer texto del documento");
-      return '';
+      return await processFileWithVision(file);
     }
     
     console.log("✅ Texto extraído exitosamente");
     return fullText;
   } catch (error) {
     console.error("❌ Error al procesar el PDF:", error);
-    // Intentar con Vision API como fallback en caso de error
     try {
       console.log("🔄 Intentando procesar con Vision API después del error...");
-      const text = await processFileWithVision(file);
-      if (text) {
-        console.log("✅ Texto extraído exitosamente con Vision API");
-        return text;
-      }
+      return await processFileWithVision(file);
     } catch (visionError) {
       console.error("❌ Error también con Vision API:", visionError);
+      throw new Error("No se pudo procesar el archivo");
     }
-    return '';
   }
 }
