@@ -1,46 +1,15 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
+import { GlobalWorkerOptions } from 'pdfjs-dist';
 import { processFileWithVision } from './api';
 import { toast } from 'sonner';
+
+// Configurar el worker de PDF.js
+GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 // Mejorar validación de tipos de archivo
 function isValidPDF(file: File): boolean {
   return file.type === 'application/pdf' && file.size > 0 && file.size < 15 * 1024 * 1024;
-}
-
-// Configurar múltiples CDNs como fallback con timeout
-const CDN_URLS = [
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`,
-  `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
-  `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
-];
-
-async function loadPdfWorker(): Promise<void> {
-  let workerLoaded = false;
-
-  for (const cdnUrl of CDN_URLS) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
-
-      pdfjsLib.GlobalWorkerOptions.workerSrc = cdnUrl;
-      await fetch(cdnUrl, { 
-        method: 'HEAD',
-        signal: controller.signal 
-      });
-
-      clearTimeout(timeoutId);
-      console.log("✅ Worker PDF.js cargado desde:", cdnUrl);
-      workerLoaded = true;
-      break;
-    } catch (error) {
-      console.warn(`⚠️ No se pudo cargar worker desde ${cdnUrl}:`, error);
-    }
-  }
-
-  if (!workerLoaded) {
-    throw new Error('No se pudo cargar el worker de PDF.js desde ningún CDN');
-  }
 }
 
 export async function extractTextFromPdf(file: File): Promise<string> {
@@ -52,29 +21,12 @@ export async function extractTextFromPdf(file: File): Promise<string> {
       throw new Error('Archivo PDF inválido o demasiado grande');
     }
 
-    // Intentar cargar el worker con reintentos
-    let workerLoadAttempts = 0;
-    while (workerLoadAttempts < 3) {
-      try {
-        await loadPdfWorker();
-        break;
-      } catch (error) {
-        workerLoadAttempts++;
-        if (workerLoadAttempts === 3) {
-          console.log("⚠️ Fallback a OCR después de fallos en worker");
-          return await processFileWithVision(file);
-        }
-        await new Promise(resolve => setTimeout(resolve, 1000 * workerLoadAttempts));
-      }
-    }
-
     const arrayBuffer = await file.arrayBuffer();
     const loadingTask = pdfjsLib.getDocument({
       data: arrayBuffer,
       useWorkerFetch: false,
       isEvalSupported: false,
-      useSystemFonts: true,
-      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`
+      useSystemFonts: true
     });
 
     // Timeout para la carga del PDF
