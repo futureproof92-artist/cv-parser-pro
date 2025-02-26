@@ -1,4 +1,6 @@
 
+import { toast } from "sonner";
+
 export async function processFileWithVision(file: File): Promise<string> {
   try {
     console.log("🖼️ Iniciando procesamiento con Vision API...");
