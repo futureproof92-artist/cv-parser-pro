@@ -1,5 +1,6 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
+import { processFileWithVision } from './api';
 
 // Inicializar PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -27,11 +28,17 @@ export async function extractTextFromPdf(file: File): Promise<string> {
     
     // Verificar si se extrajo texto
     if (fullText.trim().length === 0) {
-      console.log("⚠️ No se pudo extraer texto del PDF, se necesitará OCR");
+      console.log("⚠️ No se pudo extraer texto del PDF, intentando con OCR");
+      // Usar Google Vision API a través del endpoint seguro
+      fullText = await processFileWithVision(file);
+    }
+    
+    if (!fullText) {
+      console.log("❌ No se pudo extraer texto del documento");
       return '';
     }
     
-    console.log("✅ Texto extraído exitosamente del PDF");
+    console.log("✅ Texto extraído exitosamente");
     return fullText;
   } catch (error) {
     console.error("❌ Error al procesar el PDF:", error);
