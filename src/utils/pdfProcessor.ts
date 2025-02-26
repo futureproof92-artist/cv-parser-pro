@@ -2,8 +2,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { processFileWithVision } from './api';
 
-// Inicializar PDF.js worker usando un CDN más confiable
-const pdfWorkerSrc = `//cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+// Inicializar PDF.js worker usando la versión correcta
+const pdfWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.js`;
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 export async function extractTextFromPdf(file: File): Promise<string> {

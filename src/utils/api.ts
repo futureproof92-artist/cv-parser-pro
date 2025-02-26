@@ -4,7 +4,7 @@ export async function processFileWithVision(file: File): Promise<string> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch('/api/process-cv', {
+    const response = await fetch('https://autixypkmyfzypmqnsgf.supabase.co/functions/v1/process-cv', {
       method: 'POST',
       body: formData,
     });
