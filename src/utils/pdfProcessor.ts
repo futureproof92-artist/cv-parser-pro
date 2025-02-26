@@ -2,12 +2,33 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { processFileWithVision } from './api';
 
-// Configurar el worker de PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+// Configurar múltiples CDNs como fallback
+const CDN_URLS = [
+  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`,
+  `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
+  `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
+];
+
+async function loadPdfWorker(): Promise<void> {
+  for (const cdnUrl of CDN_URLS) {
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = cdnUrl;
+      // Verificar que el worker se carga correctamente
+      await fetch(cdnUrl, { method: 'HEAD' });
+      console.log("✅ Worker PDF.js cargado desde:", cdnUrl);
+      return;
+    } catch (error) {
+      console.warn(`⚠️ No se pudo cargar worker desde ${cdnUrl}:`, error);
+    }
+  }
+  throw new Error('No se pudo cargar el worker de PDF.js');
+}
 
 export async function extractTextFromPdf(file: File): Promise<string> {
   try {
     console.log("📄 Iniciando procesamiento del PDF:", file.name);
+    
+    await loadPdfWorker();
     
     // Verificar tamaño del archivo
     if (file.size > 10 * 1024 * 1024) {
@@ -15,13 +36,13 @@ export async function extractTextFromPdf(file: File): Promise<string> {
       return await processFileWithVision(file);
     }
 
-    // Intentar extraer texto del PDF
     const arrayBuffer = await file.arrayBuffer();
     const loadingTask = pdfjsLib.getDocument({
       data: arrayBuffer,
       useWorkerFetch: false,
       isEvalSupported: false,
-      useSystemFonts: true
+      useSystemFonts: true,
+      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`
     });
 
     console.log("🔍 Cargando documento PDF...");
@@ -31,12 +52,16 @@ export async function extractTextFromPdf(file: File): Promise<string> {
     let fullText = '';
     const textPromises = [];
     
-    // Extraer texto de todas las páginas en paralelo
     for (let i = 1; i <= pdf.numPages; i++) {
       textPromises.push(
         pdf.getPage(i).then(async (page) => {
-          const textContent = await page.getTextContent();
-          return textContent.items.map((item: any) => item.str).join(' ');
+          try {
+            const textContent = await page.getTextContent();
+            return textContent.items.map((item: any) => item.str).join(' ');
+          } catch (error) {
+            console.error(`❌ Error en página ${i}:`, error);
+            return '';
+          }
         })
       );
     }
@@ -53,12 +78,6 @@ export async function extractTextFromPdf(file: File): Promise<string> {
     return fullText;
   } catch (error) {
     console.error("❌ Error al procesar el PDF:", error);
-    try {
-      console.log("🔄 Intentando con Vision API...");
-      return await processFileWithVision(file);
-    } catch (visionError) {
-      console.error("❌ Error con Vision API:", visionError);
-      throw new Error("No se pudo procesar el archivo");
-    }
+    return await processFileWithVision(file);
   }
 }

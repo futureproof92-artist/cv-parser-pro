@@ -8,17 +8,22 @@ export async function processFileWithVision(file: File): Promise<string> {
     const maxRetries = 3;
     let lastError;
 
+    const currentOrigin = window.location.origin;
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`📡 Intento ${attempt}/${maxRetries}`);
         
-        // Usamos la URL correcta del endpoint y configuramos bien los headers
         const response = await fetch('https://autixypkmyfzypmqnsgf.functions.supabase.co/process-cv', {
           method: 'POST',
           headers: {
             'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1dGl4eXBrbXlmenlwbXFuc2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1OTgyODYsImV4cCI6MjA1NjE3NDI4Nn0.vWRAphkntuxDJbgSxsleei5R-gG0NwGLQIbtXUEjEyI',
+            'Origin': currentOrigin,
+            'Content-Type': 'multipart/form-data'
           },
           body: formData,
+          mode: 'cors',
+          credentials: 'include'
         });
 
         if (!response.ok) {
@@ -37,7 +42,6 @@ export async function processFileWithVision(file: File): Promise<string> {
         lastError = error;
         
         if (attempt < maxRetries) {
-          // Exponential backoff
           const delay = Math.pow(2, attempt) * 1000;
           await new Promise(resolve => setTimeout(resolve, delay));
         }
