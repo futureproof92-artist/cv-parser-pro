@@ -2,9 +2,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { processFileWithVision } from './api';
 
-// Configurar el worker de PDF.js usando la misma versión que la biblioteca
-const PDFJS_VERSION = pdfjsLib.version;
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+// Configurar el worker de PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 export async function extractTextFromPdf(file: File): Promise<string> {
   try {

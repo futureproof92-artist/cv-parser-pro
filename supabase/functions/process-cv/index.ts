@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { ImageAnnotatorClient } from "https://esm.sh/@google-cloud/vision@4.0.3"
+import { ImageAnnotatorClient } from "@google-cloud/vision"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
