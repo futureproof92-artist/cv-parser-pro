@@ -14,6 +14,10 @@ export async function processFileWithVision(file: File): Promise<string> {
       try {
         console.log(`📡 Intento ${attempt}/${maxRetries}`);
         
+        // Timeout para la petición
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
         const response = await fetch('https://autixypkmyfzypmqnsgf.functions.supabase.co/process-cv', {
           method: 'POST',
           headers: {
@@ -22,12 +26,16 @@ export async function processFileWithVision(file: File): Promise<string> {
             'Content-Type': 'multipart/form-data'
           },
           body: formData,
+          signal: controller.signal,
           mode: 'cors',
           credentials: 'include'
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
+          const errorText = await response.text();
+          throw new Error(`Error HTTP ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
@@ -51,6 +59,7 @@ export async function processFileWithVision(file: File): Promise<string> {
     throw lastError || new Error('No se pudo procesar el archivo después de varios intentos');
   } catch (error) {
     console.error('❌ Error fatal en Vision API:', error);
+    toast.error(`Error en Vision API: ${error.message}`);
     throw error;
   }
 }
