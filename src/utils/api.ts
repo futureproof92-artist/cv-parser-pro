@@ -1,25 +1,51 @@
 
 export async function processFileWithVision(file: File): Promise<string> {
   try {
+    console.log("🖼️ Iniciando procesamiento con Vision API...");
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch('https://autixypkmyfzypmqnsgf.functions.supabase.co/process-cv', {
-      method: 'POST',
-      headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1dGl4eXBrbXlmenlwbXFuc2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1OTgyODYsImV4cCI6MjA1NjE3NDI4Nn0.vWRAphkntuxDJbgSxsleei5R-gG0NwGLQIbtXUEjEyI'
-      },
-      body: formData,
-    });
+    // Implementar sistema de reintentos
+    const maxRetries = 3;
+    let lastError;
 
-    if (!response.ok) {
-      throw new Error(`Error al procesar el archivo: ${response.status}`);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📡 Intento ${attempt}/${maxRetries}`);
+        const response = await fetch('https://autixypkmyfzypmqnsgf.functions.supabase.co/process-cv', {
+          method: 'POST',
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1dGl4eXBrbXlmenlwbXFuc2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1OTgyODYsImV4cCI6MjA1NjE3NDI4Nn0.vWRAphkntuxDJbgSxsleei5R-gG0NwGLQIbtXUEjEyI',
+            'Content-Type': 'multipart/form-data'
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.text) {
+          throw new Error('No se recibió texto del servidor');
+        }
+
+        console.log("✅ Texto extraído exitosamente con Vision API");
+        return data.text;
+      } catch (error) {
+        console.error(`❌ Error en intento ${attempt}:`, error);
+        lastError = error;
+        
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
 
-    const data = await response.json();
-    return data.text || '';
+    throw lastError || new Error('No se pudo procesar el archivo después de varios intentos');
   } catch (error) {
-    console.error('Error en el procesamiento de Vision API:', error);
+    console.error('❌ Error fatal en Vision API:', error);
     throw error;
   }
 }
