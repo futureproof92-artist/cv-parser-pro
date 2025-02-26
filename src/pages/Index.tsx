@@ -1,11 +1,75 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from "react";
+import { FileUploader } from "../components/FileUploader";
+import { JobDescription } from "../components/JobDescription";
+import { AnalysisResults } from "../components/AnalysisResults";
+import { toast } from "sonner";
 
 const Index = () => {
+  const [files, setFiles] = useState<File[]>([]);
+  const [jobDescription, setJobDescription] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [results, setResults] = useState<any[]>([]);
+
+  const handleFilesChange = (newFiles: File[]) => {
+    if (newFiles.length > 12) {
+      toast.error("Solo se permiten hasta 12 archivos");
+      return;
+    }
+    setFiles(newFiles);
+  };
+
+  const handleAnalyze = async () => {
+    if (files.length === 0) {
+      toast.error("Por favor, sube al menos un CV");
+      return;
+    }
+    if (!jobDescription.trim()) {
+      toast.error("Por favor, describe el puesto de trabajo");
+      return;
+    }
+
+    setAnalyzing(true);
+    // Simulación de análisis
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    
+    // Aquí iría la lógica real de análisis
+    const mockResults = files.map((file) => ({
+      fileName: file.name,
+      score: Math.random() * 100,
+      matches: [
+        "Experiencia relevante",
+        "Habilidades técnicas",
+        "Formación académica",
+      ],
+    }));
+
+    setResults(mockResults.sort((a, b) => b.score - a.score));
+    setAnalyzing(false);
+    toast.success("Análisis completado");
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-background">
+      <div className="container py-8 space-y-8 animate-fade-in">
+        <header className="text-center space-y-4">
+          <h1 className="text-4xl font-bold tracking-tight">CV Parser Pro</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Analiza múltiples CVs y encuentra los candidatos más adecuados para tu
+            puesto de trabajo utilizando IA avanzada
+          </p>
+        </header>
+
+        <main className="max-w-4xl mx-auto space-y-8">
+          <FileUploader files={files} onFilesChange={handleFilesChange} />
+          <JobDescription
+            value={jobDescription}
+            onChange={setJobDescription}
+            onAnalyze={handleAnalyze}
+            isAnalyzing={analyzing}
+          />
+          {results.length > 0 && <AnalysisResults results={results} />}
+        </main>
       </div>
     </div>
   );
