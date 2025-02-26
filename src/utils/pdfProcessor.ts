@@ -4,8 +4,8 @@ import { GlobalWorkerOptions } from 'pdfjs-dist';
 import { processFileWithVision } from './api';
 import { toast } from 'sonner';
 
-// Configurar el worker de PDF.js
-GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+// Configurar el worker de PDF.js usando CDN de unpkg
+GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 // Mejorar validación de tipos de archivo
 function isValidPDF(file: File): boolean {
